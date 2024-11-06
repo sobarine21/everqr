@@ -2,12 +2,8 @@ import streamlit as st
 import qrcode
 from PIL import Image, ImageDraw, ImageOps
 import io
-import pandas as pd
-import numpy as np
 import random
-import time
 from io import BytesIO
-import base64
 
 # Function to generate a QR code with custom options
 def generate_qr(data, error_correction, box_size, border, fill_color, back_color, logo_path=None, rounded=False, shadow=False, rotate_angle=0, background_img=None, custom_icon=None):
