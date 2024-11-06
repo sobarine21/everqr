@@ -7,6 +7,7 @@ from io import BytesIO
 
 # Function to generate a QR code with custom options
 def generate_qr(data, error_correction, box_size, border, fill_color, back_color, logo_path=None, rounded=False, shadow=False, rotate_angle=0, background_img=None, custom_icon=None):
+    # Generate the basic QR code
     qr = qrcode.QRCode(
         version=None,
         error_correction=error_correction,
@@ -18,37 +19,41 @@ def generate_qr(data, error_correction, box_size, border, fill_color, back_color
 
     img = qr.make_image(fill_color=fill_color, back_color=back_color)
 
+    # Ensure that the base image is in RGBA mode (with alpha channel)
+    img = img.convert("RGBA")
+
     # Apply logo (optional)
     if logo_path:
         logo = Image.open(logo_path)
+        logo = logo.convert("RGBA")  # Ensure logo has RGBA mode (transparency)
         logo = logo.resize((50, 50))  # Resize logo
-        img.paste(logo, (img.size[0] // 2 - 25, img.size[1] // 2 - 25), logo)
+        # Calculate position for the logo
+        position = (img.size[0] // 2 - 25, img.size[1] // 2 - 25)
+        # Paste the logo onto the QR code, using the logo's alpha channel as the mask
+        img.paste(logo, position, logo)
 
-    # Apply rounded corners
+    # Apply rounded corners (optional)
     if rounded:
-        img = img.convert("RGBA")
-        img = ImageOps.expand(img, border=0, fill=back_color)
         img = round_corners(img, 20)
 
-    # Apply shadow effect
+    # Apply shadow effect (optional)
     if shadow:
-        img = img.convert("RGBA")
         shadow = img.copy()
         shadow = shadow.convert("RGBA")
         shadow = Image.new('RGBA', img.size, (0, 0, 0, 100))
         img = Image.alpha_composite(shadow, img)
 
-    # Apply rotation
+    # Apply rotation (optional)
     img = img.rotate(rotate_angle, expand=True)
 
-    # Apply background image
+    # Apply background image (optional)
     if background_img:
-        bg = Image.open(background_img)
-        img = Image.composite(img, bg, img.convert("L"))
+        bg = Image.open(background_img).convert("RGBA")
+        img = Image.alpha_composite(bg, img)
 
-    # Custom Icon on QR code
+    # Custom Icon (optional)
     if custom_icon:
-        icon = Image.open(custom_icon)
+        icon = Image.open(custom_icon).convert("RGBA")
         icon = icon.resize((40, 40))  # Resize icon
         img.paste(icon, (img.size[0] // 2 - 20, img.size[1] // 2 - 20), icon)
 
