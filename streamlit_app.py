@@ -1,6 +1,6 @@
 import streamlit as st
 import qrcode
-from PIL import Image
+from PIL import Image, ImageDraw, ImageOps
 import io
 import pandas as pd
 import numpy as np
@@ -27,11 +27,8 @@ def generate_qr(data, error_correction, box_size, border, fill_color, back_color
     # Apply rounded corners
     if rounded:
         img = img.convert("RGBA")
-        img_array = np.array(img)
-        mask = np.zeros_like(img_array[..., 0])
-        cv2.circle(mask, (img_array.shape[1] // 2, img_array.shape[0] // 2), img_array.shape[0] // 2, 255, -1)
-        img_array[..., 3] = mask
-        img = Image.fromarray(img_array)
+        img = ImageOps.expand(img, border=0, fill=back_color)
+        img = round_corners(img, 20)  # Adjust the corner radius here
 
     # Apply shadow effect
     if shadow:
@@ -49,6 +46,23 @@ def generate_qr(data, error_correction, box_size, border, fill_color, back_color
         bg = Image.open(background_img)
         img = Image.composite(img, bg, img.convert("L"))
 
+    return img
+
+# Function to round the corners of an image
+def round_corners(img, radius):
+    width, height = img.size
+    circle = Image.new('L', (radius*2, radius*2), 0)
+    draw = ImageDraw.Draw(circle)
+    draw.ellipse((0, 0, radius*2, radius*2), fill=255)
+    
+    alpha = Image.new('L', img.size, 255)
+    w, h = img.size
+    alpha.paste(circle, (0, 0))
+    alpha.paste(circle, (w - radius, 0))
+    alpha.paste(circle, (0, h - radius))
+    alpha.paste(circle, (w - radius, h - radius))
+    
+    img.putalpha(alpha)
     return img
 
 # Streamlit UI
@@ -153,4 +167,3 @@ if file:
             st.write(f"Generating QR code for: {line}")
             img = generate_qr(line, error_correction, box_size, border, fill_color, back_color, logo)
             st.image(img)
-
