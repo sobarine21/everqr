@@ -4,9 +4,13 @@ from PIL import Image, ImageDraw, ImageOps
 import io
 import pandas as pd
 import numpy as np
+import random
+import time
+from io import BytesIO
+import base64
 
-# Function to generate QR code with custom options
-def generate_qr(data, error_correction, box_size, border, fill_color, back_color, logo_path=None, rounded=False, shadow=False, rotate_angle=0, background_img=None):
+# Function to generate a QR code with custom options
+def generate_qr(data, error_correction, box_size, border, fill_color, back_color, logo_path=None, rounded=False, shadow=False, rotate_angle=0, background_img=None, custom_icon=None):
     qr = qrcode.QRCode(
         version=None,
         error_correction=error_correction,
@@ -28,7 +32,7 @@ def generate_qr(data, error_correction, box_size, border, fill_color, back_color
     if rounded:
         img = img.convert("RGBA")
         img = ImageOps.expand(img, border=0, fill=back_color)
-        img = round_corners(img, 20)  # Adjust the corner radius here
+        img = round_corners(img, 20)
 
     # Apply shadow effect
     if shadow:
@@ -46,23 +50,47 @@ def generate_qr(data, error_correction, box_size, border, fill_color, back_color
         bg = Image.open(background_img)
         img = Image.composite(img, bg, img.convert("L"))
 
+    # Custom Icon on QR code
+    if custom_icon:
+        icon = Image.open(custom_icon)
+        icon = icon.resize((40, 40))  # Resize icon
+        img.paste(icon, (img.size[0] // 2 - 20, img.size[1] // 2 - 20), icon)
+
     return img
 
 # Function to round the corners of an image
 def round_corners(img, radius):
     width, height = img.size
-    circle = Image.new('L', (radius*2, radius*2), 0)
+    circle = Image.new('L', (radius * 2, radius * 2), 0)
     draw = ImageDraw.Draw(circle)
-    draw.ellipse((0, 0, radius*2, radius*2), fill=255)
-    
+    draw.ellipse((0, 0, radius * 2, radius * 2), fill=255)
+
     alpha = Image.new('L', img.size, 255)
     w, h = img.size
     alpha.paste(circle, (0, 0))
     alpha.paste(circle, (w - radius, 0))
     alpha.paste(circle, (0, h - radius))
     alpha.paste(circle, (w - radius, h - radius))
-    
+
     img.putalpha(alpha)
+    return img
+
+# Function to generate a 3D perspective QR code effect
+def generate_3d_qr(data, error_correction, box_size, border, fill_color, back_color):
+    qr = qrcode.QRCode(
+        version=None,
+        error_correction=error_correction,
+        box_size=box_size,
+        border=border,
+    )
+    qr.add_data(data)
+    qr.make(fit=True)
+
+    img = qr.make_image(fill_color=fill_color, back_color=back_color)
+
+    # Apply 3D perspective effect (simulation)
+    img = img.convert("RGBA")
+    img = img.rotate(45, expand=True)
     return img
 
 # Streamlit UI
@@ -71,7 +99,7 @@ st.title("Advanced QR Code Generator")
 # QR Code Type Selection
 option = st.selectbox(
     "Select the type of QR code you want to create:",
-    ("URL", "Contact Information (vCard)", "Email", "Geo Location", "Event (vCalendar)", "Text", "Wi-Fi", "SMS", "Payment Link")
+    ("URL", "Contact Information (vCard)", "Email", "Geo Location", "Event (vCalendar)", "Text", "Wi-Fi", "SMS", "Payment Link", "3D Effect", "Dynamic Content")
 )
 
 # Collecting data based on selected QR code type
@@ -113,6 +141,10 @@ elif option == "SMS":
 elif option == "Payment Link":
     payment_url = st.text_input("Enter your payment link:")
     data = payment_url
+elif option == "3D Effect":
+    data = st.text_input("Enter the data for 3D QR code:")
+elif option == "Dynamic Content":
+    data = f"https://api.example.com/qrdata/{random.randint(1000, 9999)}"  # Example dynamic data
 
 # Additional customization options
 error_correction = st.selectbox("Select Error Correction Level:", [
@@ -130,11 +162,15 @@ rounded = st.checkbox("Rounded QR Code Blocks")
 shadow = st.checkbox("Apply Shadow Effect")
 rotate_angle = st.slider("Rotate QR Code (degrees):", 0, 360, 0)
 background_img = st.file_uploader("Upload Background Image (optional):", type=["png", "jpg", "jpeg"])
+custom_icon = st.file_uploader("Upload Custom Icon (optional):", type=["png", "jpg", "jpeg"])
 
 # Generate QR Code button
 if st.button("Generate QR Code"):
     if data:
-        img = generate_qr(data, error_correction, box_size, border, fill_color, back_color, logo, rounded, shadow, rotate_angle, background_img)
+        if option == "3D Effect":
+            img = generate_3d_qr(data, error_correction, box_size, border, fill_color, back_color)
+        else:
+            img = generate_qr(data, error_correction, box_size, border, fill_color, back_color, logo, rounded, shadow, rotate_angle, background_img, custom_icon)
 
         # Show the generated QR Code
         st.image(img, caption="Your QR Code")
@@ -150,20 +186,3 @@ if st.button("Generate QR Code"):
             file_name="qr_code.png",
             mime="image/png",
         )
-
-# Bulk QR Code Generator
-st.subheader("Bulk QR Code Generator")
-file = st.file_uploader("Upload a CSV or Text File", type=["csv", "txt"])
-if file:
-    if file.type == "text/csv":
-        df = pd.read_csv(file)
-        for index, row in df.iterrows():
-            st.write(f"Generating QR code for: {row[0]}")
-            img = generate_qr(row[0], error_correction, box_size, border, fill_color, back_color, logo)
-            st.image(img)
-    elif file.type == "text/plain":
-        text_data = file.getvalue().decode("utf-8").splitlines()
-        for line in text_data:
-            st.write(f"Generating QR code for: {line}")
-            img = generate_qr(line, error_correction, box_size, border, fill_color, back_color, logo)
-            st.image(img)
