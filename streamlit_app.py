@@ -22,14 +22,12 @@ def generate_qr(data, error_correction, box_size, border, fill_color, back_color
     # Ensure that the base image is in RGBA mode (with alpha channel)
     img = img.convert("RGBA")
 
-    # Apply logo (optional)
+    # Apply logo (optional) with reduced size for mobile optimization
     if logo_path:
         logo = Image.open(logo_path)
-        logo = logo.convert("RGBA")  # Ensure logo has RGBA mode (transparency)
-        logo = logo.resize((50, 50))  # Resize logo
-        # Calculate position for the logo
-        position = (img.size[0] // 2 - 25, img.size[1] // 2 - 25)
-        # Paste the logo onto the QR code, using the logo's alpha channel as the mask
+        logo = logo.convert("RGBA")
+        logo = logo.resize((40, 40))  # Resize logo to a smaller size for mobile
+        position = (img.size[0] // 2 - 20, img.size[1] // 2 - 20)
         img.paste(logo, position, logo)
 
     # Apply rounded corners (optional)
@@ -54,8 +52,8 @@ def generate_qr(data, error_correction, box_size, border, fill_color, back_color
     # Custom Icon (optional)
     if custom_icon:
         icon = Image.open(custom_icon).convert("RGBA")
-        icon = icon.resize((40, 40))  # Resize icon
-        img.paste(icon, (img.size[0] // 2 - 20, img.size[1] // 2 - 20), icon)
+        icon = icon.resize((30, 30))  # Resize icon for better mobile fit
+        img.paste(icon, (img.size[0] // 2 - 15, img.size[1] // 2 - 15), icon)
 
     return img
 
@@ -104,6 +102,7 @@ option = st.selectbox(
 )
 
 # Collecting data based on selected QR code type
+data = ""
 if option == "URL":
     data = st.text_input("Enter the URL:")
 elif option == "Contact Information (vCard)":
@@ -174,7 +173,7 @@ if st.button("Generate QR Code"):
             img = generate_qr(data, error_correction, box_size, border, fill_color, back_color, logo, rounded, shadow, rotate_angle, background_img, custom_icon)
 
         # Show the generated QR Code
-        st.image(img, caption="Your QR Code")
+        st.image(img, caption="Your QR Code", use_column_width=True)
 
         # Allow download
         img_buffer = io.BytesIO()
